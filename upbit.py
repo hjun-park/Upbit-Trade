@@ -16,9 +16,9 @@ print(pyupbit.Upbit)
 #
 #
 # # 리플 시세 조회
-# price_btc = pyupbit.get_current_price("KRW-XRP")
-# print("======== 리플 시세 =======")
-# print(price_btc)
+price_btc = pyupbit.get_current_price("KRW-DOGE")
+print("======== 리플 시세 =======")
+print(price_btc)
 #
 # # 비트코인과 이더리움 시세 한 번에 조회
 # price_btc_eth = pyupbit.get_current_price(["KRW-BTC", "KRW-ETH"])
