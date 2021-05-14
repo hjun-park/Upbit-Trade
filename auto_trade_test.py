@@ -5,10 +5,9 @@ import pandas as pd
 import requests
 import webbrowser
 import numpy as np
-import os
 
 ### test
-ma20 = 657
+ma20 = 654
 ma60 = 660
 bf_ma20 = ma20
 bf_ma60 = ma60
@@ -20,7 +19,7 @@ def golden_cross(symbol):
     ### test
     global ma20, now_price, bf_ma20
     global ma60, before_price, bf_ma60
-    global sell_cnt, buy_price
+    global sell_cnt
     """
         # 매수 시기
         양봉 > 20이평선 > 60이평선 더 클 때 (전과 지금 값보다 비교해서 많은 경우 )
@@ -85,16 +84,7 @@ def golden_cross(symbol):
     # if is_state > 0 and (test1 < 0 and test2 > 0):
     if is_state > 0 and (test1 < 0 and test2 >= 0):
         call = '골든크로스'
-        buy_price = pyupbit.get_current_price('KRW-DOGE')
-        print('#####################')
-        print(f'buy_price[DOGE] : {buy_price}')
-        print('#####################')
-        # 금액이 5000이상이 되도록 맞춤
-        test_price = pyupbit.get_current_price('KRW-DOGE')
-        print(f'!!!!!!! 매수 : {test_price}')
-        # 시장가로 매수
-        # print(upbit.buy_market_order(ticker="KRW-DOGE", price=5000))
-        # print(upbit.get_order('KRW-DOGE'))
+        # buy_price = buy_thing
         print("매수")
     elif test1 >= 0 and test2 < 0:
         call = '데드크로스'
@@ -102,9 +92,6 @@ def golden_cross(symbol):
         if sell_cnt == 0 or (now_price < buy_price):
             call = '~~~~~~~!!!!!!!!!!!! 매도 '
             print("매도")
-
-
-            print(upbit.sell_market_order(ticker='KRW-DOGE', volume=))
     else:
         pass
 
@@ -123,21 +110,13 @@ def golden_cross(symbol):
 
 
 if __name__ == '__main__':
-    # f = open("upbit.txt")
-    # lines = f.readlines()
-    # access = lines[0].strip()
-    # secret = lines[1].strip()
-    # f.close()
-    os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = '46PB8FwZLoe2IjKxU0OnJToTtOtjOMxIx5l3dh2h'
-    os.environ['UPBIT_OPEN_API_SECRET_KEY'] = 'B1oYGuJi7Y4TowhFnTsnv5LSKpuMSyNxKEej8ojk'
-    os.environ['UPBIT_OPEN_API_SERVER_URL'] = "https://api.upbit.com"
+    f = open("upbit.txt")
+    lines = f.readlines()
+    access = lines[0].strip()
+    secret = lines[1].strip()
+    f.close()
 
-    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
-    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
-    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
-
-
-    upbit = pyupbit.Upbit(access_key, secret_key)
+    upbit = pyupbit.Upbit(access, secret)
 
     ### test
     # before_price = 0

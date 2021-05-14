@@ -4,7 +4,7 @@ import pyupbit
 import time
 import datetime
 
-print(pyupbit.Upbit)
+# print(pyupbit.Upbit)
 #
 # # 가상화폐 티커 조회
 # tickers = pyupbit.get_tickers()
@@ -16,9 +16,9 @@ print(pyupbit.Upbit)
 #
 #
 # # 리플 시세 조회
-price_btc = pyupbit.get_current_price("KRW-DOGE")
-print("======== 리플 시세 =======")
-print(price_btc)
+# price_btc = pyupbit.get_current_price("KRW-DOGE")
+# print("======== 리플 시세 =======")
+# print(price_btc)
 #
 # # 비트코인과 이더리움 시세 한 번에 조회
 # price_btc_eth = pyupbit.get_current_price(["KRW-BTC", "KRW-ETH"])
@@ -42,4 +42,5 @@ print(price_btc)
 # ma5 = window.mean()
 # print("======== 5일 이동평균선 계산 =======")
 # print(ma5)
+# print(pyupbit.get_orderbook('KRW-DOGE'))
 

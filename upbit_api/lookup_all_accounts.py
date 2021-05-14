@@ -3,6 +3,7 @@ import jwt
 import uuid
 import hashlib
 from urllib.parse import urlencode
+import pyupbit
 import requests
 import json
 
@@ -15,6 +16,8 @@ os.environ['UPBIT_OPEN_API_SERVER_URL'] = "https://api.upbit.com"
 access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
 secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
 server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
+
+upbit = pyupbit.Upbit(access_key, secret_key)
 
 payload = {
     'access_key': access_key,
@@ -38,4 +41,6 @@ res = requests.get(server_url + "/v1/accounts", headers=headers)
 json_obj = json.loads(res.text)
 asset = json_obj[0]
 
+# print(upbit.buy_limit_order(ticker="KRW-DOGE", price=580, volume=1))
+print(upbit.get_order(ticker_or_uuid='KRW-DOGE', state='done'))
 
