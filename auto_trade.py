@@ -9,7 +9,7 @@ upbit_candle_list = []
 
 
 # 매도 후 메일 전송
-def dead_cross(symbol):
+async def dead_cross(symbol):
     print("전량매도")
 
     # ==========================================
@@ -30,62 +30,47 @@ def dead_cross(symbol):
     # ==========================================
     title = f'{symbol} 전량매도'
     content = f' 매도 가격: {sell_price}\n매도 수량: {sell_volume}'
-    send_mail(title, content)
+    await send_mail(title, content)
 
 
 # 매수 후 메일 전송
-def golden_cross(symbol):
+async def golden_cross(symbol):
     print("매수")
     # ==========================================
     # Buy
     # ==========================================
     # 시장가로 매수
-    buy_price = 5000
+    buy_price = 6000
     upbit.buy_market_order(ticker=symbol, price=buy_price)
 
     # ==========================================
     # Send Email
     # ==========================================
     title = f'{symbol} 매수'
-    content = upbit.get_order(symbol)
-    send_mail(title, content)
+    content = f'매수 : {symbol}, 가격: {buy_price}'
+    await send_mail(title, content)
 
 
 # 3번 연속 하락을 감지하거나 현재가보다 떨어질 경우 판매
-def check_low_candle(symbol):
+async def check_low_candle(symbol):
     candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes30', count=4)
     close = candle['close']
 
     # 3번 연속 하락 시 판매
     if close[0] > close[1] > close[2]:
-        send_mail("3연속 하락에 의한 매도", f'{symbol}')
-        dead_cross(symbol)
+        await send_mail("3연속 하락에 의한 매도", f'{symbol}')
+        await dead_cross(symbol)
 
         return False
 
     # 현재가보다 떨어질 경우 판매
     if pyupbit.get_current_price(symbol) > upbit.get_avg_buy_price(symbol):
-        send_mail("현재값보다 떨어져 판매", f'{symbol}')
-        dead_cross(symbol)
+        await send_mail("현재값보다 떨어져 판매", f'{symbol}')
+        await dead_cross(symbol)
 
         return False
 
     return False
-
-
-# 10개씩 조회
-# async def lookup_symbol():
-def lookup_symbol():
-    symbol_list = []
-    print("async start")
-
-    for i in range(10):
-        symbol_list.append(upbit_tickers_queue.get())
-
-    print("SYMBOL_LIST ##########")
-    print(symbol_list)
-    return symbol_list
-
 
 async def checking_moving_average(symbol):
     '''
@@ -96,20 +81,27 @@ async def checking_moving_average(symbol):
             - test1 : 같거나 양수
             - tset2 : 음수
     '''
-    print(symbol, end='|')
     before_price = 0
     is_golden_cross = False
 
     try:
         while True:
+            print(symbol, end='|')
             # loop = asyncio.get_event_loop()
             # loop.run_until_complete(lookup_symbol())
             # loop.close()
 
             # asyncio.run(lookup_symbol())
 
-            candle_30min = pyupbit.get_ohlcv(symbol, interval="minute30")
-            close = candle_30min['close']
+        # 가끔 값을 받아오지 못하는 경우는 다시
+            try:
+                candle_3min = pyupbit.get_ohlcv(symbol, interval="minute3")
+                close = candle_3min['close']
+            except TypeError:
+                print('!!!!!!!!!!!!!!!!! TYPE ERROR !!!!!!!!!!!!!!!!!')
+                print('!!!!!!!!!!!!!!!!! TYPE ERROR !!!!!!!!!!!!!!!!!')
+                print('!!!!!!!!!!!!!!!!! TYPE ERROR !!!!!!!!!!!!!!!!!')
+                continue
 
             bf_ma20 = close.rolling(20).mean().iloc[-2]
             bf_ma60 = close.rolling(60).mean().iloc[-2]
@@ -124,7 +116,7 @@ async def checking_moving_average(symbol):
             # print("======== 현재/이전가 계산 ======")
             # print(f'현재가 : {now_price}')
             # print(f'이전가 : {before_price}\n')
-            is_state = now_price - before_price
+            is_state = int(now_price) - int(before_price)
             # print(f'## 음봉/양봉 : {is_state}')
             #
             # print(symbol)
@@ -140,13 +132,13 @@ async def checking_moving_average(symbol):
                 is_golden_cross = check_low_candle(symbol)
 
             if is_state > 0 and (ma_test1 < 0 and ma_test2 >= 0):
-                send_mail(f"golden_cross : {symbol}", "...")
+                await send_mail(f"golden_cross : {symbol}", "...")
                 is_golden_cross = True
-                golden_cross(symbol)
+                await golden_cross(symbol)
 
             elif ma_test1 >= 0 and ma_test2 < 0:
-                send_mail(f"dead_cross : {symbol}", "...")
-                dead_cross(symbol)
+                await send_mail(f"dead_cross : {symbol}", "...")
+                await dead_cross(symbol)
                 is_golden_cross = False
 
             else:
@@ -156,10 +148,11 @@ async def checking_moving_average(symbol):
             before_price = now_price
 
             # time.sleep(60 * 30)
-            await asyncio.sleep(60 * 10)
+            print('######## SCAN DONE #########\n\n')
+            await asyncio.sleep(60 * 3)
 
     except Exception as e:
-        send_mail("error", e)
+        await send_mail("error", str(e))
 
 
 async def check_loop(proc_name):
@@ -172,27 +165,27 @@ async def check_loop(proc_name):
         20이평선이 60이평선보다 가로지르는 상태인데 20이평선이 캔들 3번 하락세면 매도신호
 
     """
+    # ==========================================
+    # Send Email
+    # ==========================================
+    await send_mail('start the program', '....')
 
-    # 10개 코인 감시
-    symbol_list = lookup_symbol()
 
+    # 50개 코인 감시
+    # symbol_list = lookup_symbol()
+    symbol_list = get_coin_list()
     moves = [asyncio.Task(checking_moving_average(symbol)) for symbol in symbol_list]
     await asyncio.gather(*moves)
 
 
 if __name__ == '__main__':
-    # ==========================================
-    # Send Email
-    # ==========================================
-    send_mail('start the program', '....')
 
     # ==========================================
     # Enqueue Upbit Tickers
     # ==========================================
-    tickers_list = pyupbit.get_tickers(fiat="KRW")
-
-    for ticker in tickers_list:
-        upbit_tickers_queue.put(ticker)
+    # tickers_list = pyupbit.get_tickers(fiat="KRW")
+    # for ticker in tickers_list:
+    #     upbit_tickers_queue.put(ticker)
 
     # ==========================================
     # GET Upbit Account Info

@@ -4,6 +4,32 @@ import smtplib
 from email.mime.text import MIMEText
 
 
+def get_coin_list():
+    coin_list = [
+        'KRW-DOGE',
+        'KRW-ETC',
+        'KRW-XRP',
+        'KRW-ETH',
+        'KRW-BTC',
+        'KRW-ADA',
+        'KRW-EOS',
+        'KRW-DOT',
+        'KRW-BCH',
+        'KRW-QTUM',
+        'KRW-SSX',
+        'KRW-BTT',
+        'KRW-CHZ',
+        'KRW-XLM',
+        'KRW-LTC',
+        'KRW-BTG',
+        'KRW-NEO',
+        'KRW-SNT',
+        'KRW-VET',
+        'KRW-HUNT'
+    ]
+
+    return coin_list
+
 # 최소 거래 금액 단위 반환
 def get_min_price_unit(price):
     if price >= 2000000:

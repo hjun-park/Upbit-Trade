@@ -4,7 +4,11 @@ import pyupbit
 import time
 import datetime
 import smtplib
+import auto_trade
+import asyncio
+import os
 from email.mime.text import MIMEText
+
 
 # print(pyupbit.Upbit)
 #
@@ -53,4 +57,63 @@ from email.mime.text import MIMEText
 # print("======== 5일 이동평균선 계산 =======")
 # print(ma5)
 # print(pyupbit.get_orderbook('KRW-DOGE'))
+
+
+def get_min_price_unit(price):
+    if price >= 2000000:
+        unit_size = 1000
+    elif price >= 1000000:
+        unit_size = 500
+    elif price >= 500000:
+        unit_size = 100
+    elif price >= 100000:
+        unit_size = 50
+    elif price >= 10000:
+        unit_size = 10
+    elif price >= 1000:
+        unit_size = 5
+    elif price >= 100:
+        unit_size = 1
+    elif price >= 10:
+        unit_size = 0.1
+    else:
+        unit_size = 0.01
+    return unit_size
+
+
+if __name__ == '__main__':
+    # ==========================================
+    # GET Upbit Account Info
+    # ==========================================
+    os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = '46PB8FwZLoe2IjKxU0OnJToTtOtjOMxIx5l3dh2h'
+    os.environ['UPBIT_OPEN_API_SECRET_KEY'] = 'B1oYGuJi7Y4TowhFnTsnv5LSKpuMSyNxKEej8ojk'
+    os.environ['UPBIT_OPEN_API_SERVER_URL'] = "https://api.upbit.com"
+
+    access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
+    secret_key = os.environ['UPBIT_OPEN_API_SECRET_KEY']
+    server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
+
+    upbit = pyupbit.Upbit(access_key, secret_key)
+    symbol = 'KRW-LSK'
+    # # ==========================================
+    # # Buy
+    # # ==========================================
+    # # 시장가로 매수
+    # print(upbit.buy_market_order(ticker=symbol, price=5000))
+
+
+    # ==========================================
+    # Sell
+    # ==========================================
+    # 구매 단위 선정
+    unit_size = get_min_price_unit(pyupbit.get_current_price(symbol))
+
+    # 매도량 계산
+    sell_volume = upbit.get_balance(symbol)
+
+    # 현재가보다 살짝 낮게 판매
+    sell_price = pyupbit.get_current_price(symbol) - unit_size
+    print(upbit.sell_limit_order(ticker=symbol, price=sell_price, volume=sell_volume))
+
+
 
