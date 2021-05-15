@@ -1,8 +1,10 @@
-# encoding: utf-8
+# -*- coding:utf-8 -*-
 import sys
 import pyupbit
 import time
 import datetime
+import smtplib
+from email.mime.text import MIMEText
 
 # print(pyupbit.Upbit)
 #
@@ -10,9 +12,9 @@ import datetime
 # tickers = pyupbit.get_tickers()
 # print(tickers)
 #
-# # 원화시장에서 주문 가능한 티커 조회
+# 원화시장에서 주문 가능한 티커 조회
 # tickers_krw = pyupbit.get_tickers(fiat="KRW")
-# print(tickers_krw)
+# print(len(tickers_krw))
 #
 #
 # # 리플 시세 조회
@@ -26,10 +28,18 @@ import datetime
 # print(price_btc_eth)
 #
 #
-# # 스텔라루멘에 대한 OHLCV 조회
-# xlm = pyupbit.get_ohlcv("KRW-XLM")
-# print("======== 스텔라루멘 OHLCV =======")
-# print(xlm)
+# 스텔라루멘에 대한 OHLCV 조회 (종가를 기준으로 3개)
+# xlm = pyupbit.get_ohlcv(ticker="KRW-DOGE", interval='minutes30', count=3)
+# close = xlm['close']
+# print("======== 도지코인 OHLCV =======")
+# # print(close)
+#
+# if close[0] > close[1] > close[2]:
+#     print('hell')
+
+# print(close[0])
+# print(close[1])
+# print(close[2])
 #
 # # 이동평균 계산
 # close = xlm['close']
