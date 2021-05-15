@@ -7,6 +7,7 @@ import smtplib
 import auto_trade
 import asyncio
 import os
+from upbit_api.api import *
 from email.mime.text import MIMEText
 
 
@@ -94,26 +95,48 @@ if __name__ == '__main__':
     server_url = os.environ['UPBIT_OPEN_API_SERVER_URL']
 
     upbit = pyupbit.Upbit(access_key, secret_key)
-    symbol = 'KRW-LSK'
+    symbol = 'KRW-XLM'
+
+    # print(upbit.get_balances())
+    check_key_expire(upbit)
     # # ==========================================
     # # Buy
     # # ==========================================
-    # # 시장가로 매수
-    # print(upbit.buy_market_order(ticker=symbol, price=5000))
+    # 시장가로 매수
+    # print(upbit.buy_market_order(ticker=symbol, price=6000))
 
+    # # ==========================================
+    # # Sell
+    # # ==========================================
+    # # 구매 단위 선정
+    # unit_size = get_min_price_unit(pyupbit.get_current_price(symbol))
+    #
+    # # 매도량 계산
+    # sell_volume = upbit.get_balance(symbol)
+    #
+    # # 현재가보다 살짝 낮게 판매
+    # sell_price = pyupbit.get_current_price(symbol) - unit_size
+    # print(upbit.sell_limit_order(ticker=symbol, price=sell_price, volume=sell_volume))
 
     # ==========================================
-    # Sell
+    # 잔고 확인
     # ==========================================
-    # 구매 단위 선정
-    unit_size = get_min_price_unit(pyupbit.get_current_price(symbol))
+    # print(upbit.get_balance(symbol))    # 매수 개수
+    # print(upbit.get_avg_buy_price(symbol))  # 매수 평균가
+    # print(upbit.get_amount(symbol)) # 매수 KRW
+    # print(upbit.get_chance(symbol))
+    balance = upbit.get_balances()  # 매수 총 내역
+    size = len(balance)
+    print(balance)
 
-    # 매도량 계산
-    sell_volume = upbit.get_balance(symbol)
+    # 매수평균가 계산
+    for i in range(1, size):
+        print(balance[i]['avg_buy_price'])
 
-    # 현재가보다 살짝 낮게 판매
-    sell_price = pyupbit.get_current_price(symbol) - unit_size
-    print(upbit.sell_limit_order(ticker=symbol, price=sell_price, volume=sell_volume))
+    symbol = f"KRW-{balance[1]['currency']}"
+    print(f'symbol: {symbol}')
 
-
-
+    print(f'''
+        test1
+        test2
+    ''')
