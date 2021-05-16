@@ -101,13 +101,13 @@ async def check_low_candle(symbol, before_price):
 
         return 0
 
-    # 매수가가 현재가보다 더 큰 경우
-    if pyupbit.get_current_price(symbol) < upbit.get_avg_buy_price(symbol):
-        print("현재값보다 떨어져 판매")
-        await send_mail(f"{symbol} 현재값보다 떨어져 판매", f"..{content} :{upbit.get_avg_buy_price(symbol)}...")
-        await dead_cross(symbol)
-
-        return 0
+    # # 매수가가 현재가보다 더 큰 경우
+    # if pyupbit.get_current_price(symbol) < upbit.get_avg_buy_price(symbol):
+    #     print("현재값보다 떨어져 판매")
+    #     await send_mail(f"{symbol} 현재값보다 떨어져 판매", f"..{content} :{upbit.get_avg_buy_price(symbol)}...")
+    #     await dead_cross(symbol)
+    # 
+    #     return 0
 
     return 0
 
@@ -237,11 +237,7 @@ async def check_loop():
     # ==========================================
     # Send Email
     # ==========================================
-    # await send_mail('start the program', '....')
-    print('###### START ######')
-    print('###### START ######')
-    print('###### START ######')
-    print('###### START ######')
+    await send_mail('start the program', '....')
     print('###### START ######')
 
     # ==========================================
