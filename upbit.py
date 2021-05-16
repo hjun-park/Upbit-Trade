@@ -142,10 +142,10 @@ if __name__ == '__main__':
     #     test2
     # ''')
 
-    a = upbit.get_avg_buy_price('KRW-BTC')
-    print (a)
+    # a = upbit.get_avg_buy_price('KRW-BTC')
+    # print (a)
 
-    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes3', count=4)
-    close = candle['close']
-    print(type(close[0]))
-    print(int(close[0]))
+    # candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes3', count=4)
+    # close = candle['close']
+    # print(type(close[0]))
+    # print(int(close[0]))

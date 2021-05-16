@@ -9,16 +9,20 @@ from multiprocessing import Queue, Process, Pool, current_process
 
 file_path = "./upbit_api/coin_info.json"
 coin_json = 0
+RUN = True
 
 
 def handler(signum, frame):
+    global RUN
+    RUN = False
     print('TERMINATE')
+    print(coin_json)
     with open(file_path, 'w') as outfile:
         json.dump(coin_json, outfile, indent=4)
 
 
 # 매도 후 메일 전송
-async def dead_cross(symbol):
+async def dead_cross(symbol, info):
     print("전량매도")
 
     # ==========================================
@@ -37,9 +41,9 @@ async def dead_cross(symbol):
     # ==========================================
     # Send Email
     # ==========================================
-    title = f'{symbol} 전량매도'
-    content = f' 매도 가격: {sell_price}\n매도 수량: {sell_volume}'
-    await send_mail(title, content)
+    title = f'{symbol} 전량매도 {sell_price}x{sell_volume}'
+    # content = f' 매도 가격: {sell_price}\n매도 수량: {sell_volume}'
+    await send_mail(title, info)
 
 
 # 매수 후 메일 전송
@@ -49,7 +53,7 @@ async def golden_cross(symbol, info):
     # Buy
     # ==========================================
     # 시장가로 매수
-    buy_price = 6000
+    buy_price = 50000
     upbit.buy_market_order(ticker=symbol, price=buy_price)
 
     # ==========================================
@@ -62,7 +66,7 @@ async def golden_cross(symbol, info):
 
 # 3번 연속 하락을 감지하거나 현재가보다 떨어질 경우 판매
 async def check_low_candle(symbol, before_price):
-    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes10', count=4)
+    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes30', count=4)
     close = candle['close']
 
     print(f"\t\t=============================")
@@ -106,7 +110,7 @@ async def check_low_candle(symbol, before_price):
     #     print("현재값보다 떨어져 판매")
     #     await send_mail(f"{symbol} 현재값보다 떨어져 판매", f"..{content} :{upbit.get_avg_buy_price(symbol)}...")
     #     await dead_cross(symbol)
-    # 
+    #
     #     return 0
 
     return 0
@@ -128,7 +132,7 @@ async def checking_moving_average(symbol):
 
     print(coin_json)
     try:
-        while True:
+        while RUN:
             index = 0
             # ==========================================
             # CHECK ACCESS KEY
@@ -142,20 +146,36 @@ async def checking_moving_average(symbol):
 
             # 가끔 값을 받아오지 못하는 경우는 다시
             try:
-                candle_min = pyupbit.get_ohlcv(symbol, interval="minute10")
+                candle_min = pyupbit.get_ohlcv(symbol, interval="minute30")
                 close = candle_min['close']
             except TypeError:
                 await send_mail('some errer in load candle', '...')
                 print('!!!!!!!!!!!!!!!!! TYPE ERROR !!!!!!!!!!!!!!!!!')
                 continue
 
+            bf_ma01 = close.rolling(1).mean().iloc[-2]
+            bf_ma05 = close.rolling(5).mean().iloc[-2]
             bf_ma20 = close.rolling(20).mean().iloc[-2]
             bf_ma60 = close.rolling(60).mean().iloc[-2]
+            ma01 = close.rolling(1).mean().iloc[-1]
+            ma05 = close.rolling(5).mean().iloc[-1]
             ma20 = close.rolling(20).mean().iloc[-1]
             ma60 = close.rolling(60).mean().iloc[-1]
 
-            ma_test1 = bf_ma20 - bf_ma60
-            ma_test2 = ma20 - ma60
+            # ==========================================
+            # TEST : Golden Cross
+            # ==========================================
+            ma_test1 = bf_ma01 - bf_ma20  # 음수 = 골든크로스
+            ma_test2 = ma01 - ma20  # 양수 = 골든크로스
+            # ma_test1 = bf_ma20 - bf_ma60
+            # ma_test2 = ma20 - ma60
+
+            # ==========================================
+            # TEST : Dead Cross
+            # ==========================================
+            # if coin_json[symbol]:
+            ma_test3 = bf_ma01 - bf_ma05    # 같거나 양수 : 데드크로스
+            ma_test4 = ma01 - ma05          # 음수 : 데드크로스
 
             now_price = pyupbit.get_current_price(symbol)
 
@@ -171,19 +191,22 @@ async def checking_moving_average(symbol):
                 3) 음봉/양봉 : {is_state}
                 
                 ======= 이평선 계산 =======
-                1) 20일 이평선 : {round(ma20, 2)}
-                2) 60일 이평선 : {round(ma60, 2)}
+                1) 01일 이평선 : {round(ma01, 2)}
+                2) 05일 이평선 : {round(ma05, 2)}
+                3) 20일 이평선 : {round(ma20, 2)}
                 
                 ======= 크로스 테스트 =======
                 1) ma_test1 : {round(ma_test1, 2)}
                 2) ma_test2 : {round(ma_test2, 2)}
+                3) ma_test3 : {round(ma_test3, 2)}
+                2) ma_test4 : {round(ma_test4, 2)}
                 
                 골든크로스
                     - test1 : 음수
                     - test2 : 같거나 양수    
                 데드크로스
-                    - test1 : 같거나 양수
-                    - test2 : 음수
+                    - test3 : 같거나 양수
+                    - test4 : 음수
                 ###########################################
                 
                 
@@ -192,21 +215,30 @@ async def checking_moving_average(symbol):
             index += 1
 
             # ==========================================
-            # 골든크로스 상태에서의 체크 루프
+            # TEST : Dead Cross
+            #    # golden cross 일 때만 체크하도록 설정
             # ==========================================
             if coin_json[symbol]:
                 print(f' ##### {symbol} in golden_cross')
-                coin_json[symbol] = await check_low_candle(symbol, before_price)
+                if ma_test3 >= 0 and ma_test4 < 0:
+                    await send_mail(f"dead_cross : {symbol}", "...")
+                    coin_json[symbol] = 0
 
-            if is_state > 0 and (ma_test1 < 0 and ma_test2 >= 0):
-                await send_mail(f"KEEP CHECKING : {symbol}", "...")
-                coin_json[symbol] = 1
-                await golden_cross(symbol, info)
+                    await dead_cross(symbol, info)
+                    write_json(file_path, coin_json)
+                # coin_json[symbol] = await check_low_candle(symbol, before_price)
 
-            elif ma_test1 >= 0 and ma_test2 < 0:
-                await send_mail(f"dead_cross : {symbol}", "...")
-                await dead_cross(symbol)
-                coin_json[symbol] = 0
+            if coin_json[symbol] != 1:
+                if is_state > 0 and (ma_test1 < 0 and ma_test2 >= 0):
+                    await send_mail(f"KEEP CHECKING : {symbol}", "...")
+                    coin_json[symbol] = 1
+                    await golden_cross(symbol, info)
+                    write_json(file_path, coin_json)
+
+            # elif ma_test1 >= 0 and ma_test2 < 0:
+            #     await send_mail(f"dead_cross : {symbol}", "...")
+            #     await dead_cross(symbol)
+            #     coin_json[symbol] = 0
 
             else:
                 pass
@@ -216,7 +248,7 @@ async def checking_moving_average(symbol):
 
             # time.sleep(60 * 30)
             print(f'########## {symbol} SCAN DONE ############\n\n\n')
-            await asyncio.sleep(60 * 10)
+            await asyncio.sleep(60 * 30)
 
     except Exception as e:
         print(traceback.format_exc())
@@ -249,7 +281,7 @@ async def check_loop():
 
 
 # def func():
-#     while True:
+#     while RUN:
 #         name = current_process().name
 #         print("starting of process named: ", name)
 #         time.sleep(2)
@@ -257,7 +289,7 @@ async def check_loop():
 
 def sell_proc():
     try:
-        while True:
+        while RUN:
             #  1. 주기적으로 잔고확인하여 잔고가 -5% 수익이면 전량 매도
             time.sleep(60 * 10)
 
@@ -270,7 +302,8 @@ def sell_proc():
                 # -5% 이하라면 판매
                 if buy_avg_price < minus_5p:
                     symbol = f"KRW-{balance[i]['currency']}"
-                    dead_cross(symbol)
+                    info = f"-5% 이하 이유로 판매, {pyupbit.get_current_price(symbol)} : {buy_avg_price}"
+                    dead_cross(symbol, info)
 
     except Exception as e:
         print(traceback.format_exc())
@@ -278,9 +311,26 @@ def sell_proc():
         time.sleep(2)
 
 
-def buy_proc():
+def json_backup():
+    # 4분에 1번 json 백업
+    while RUN:
+        time.sleep(60 * 4)
+        write_json(file_path, coin_json)
+
     #  2. +2% 수익이 나면 추가 매수 ( 이건 신중해서 해볼 것 )
-    time.sleep(60 * 3)
+    # 1)
+    # time.sleep(60 * 30)
+
+    # balance = upbit.get_balances()  # 매수 총 내역
+    # size = len(balance)
+    # for i in range(1, size):
+    #     buy_avg_price = int(balance[i]['avg_buy_price'])
+    #     plus_1p = round(buy_avg_price * 0.95)
+    #
+    #     # -5% 이하라면 판매
+    #     if buy_avg_price < minus_5p:
+    #         symbol = f"KRW-{balance[i]['currency']}"
+    #         dead_cross(symbol)
 
 
 if __name__ == '__main__':
@@ -314,10 +364,11 @@ if __name__ == '__main__':
     # make Thread
     # ==========================================
     sell_proc = Process(target=sell_proc, name="sell_proc")
-    buy_proc = Process(target=buy_proc, name="buy_proc")
+    # buy_proc = Process(target=buy_proc, name="buy_proc")
     main_proc = Process(target=asyncio.run(check_loop()), name="main_proc")
 
-    proc_list = [sell_proc, buy_proc, main_proc]
+    # proc_list = [sell_proc, buy_proc, main_proc]
+    proc_list = [sell_proc, main_proc]
 
     for proc in proc_list:
         proc.daemon = True

@@ -46,6 +46,15 @@ coin_list = [
 ]
 
 
+# ===========================================
+# JSON 파일 백업
+# ===========================================
+def write_json(file_path, coin_json):
+    print("write JSON")
+    with open(file_path, 'w') as outfile:
+        json.dump(coin_json, outfile, indent=4)
+
+
 def load_golden_cross_info(file_path):
     with open(file_path, "r") as json_file:
         coin_json = json.load(json_file)
