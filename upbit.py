@@ -129,14 +129,23 @@ if __name__ == '__main__':
     size = len(balance)
     print(balance)
 
-    # 매수평균가 계산
-    for i in range(1, size):
-        print(balance[i]['avg_buy_price'])
 
-    symbol = f"KRW-{balance[1]['currency']}"
-    print(f'symbol: {symbol}')
+    # # 매수평균가 계산
+    # for i in range(1, size):
+    #     print(balance[i]['avg_buy_price'])
+    #
+    # symbol = f"KRW-{balance[1]['currency']}"
+    # print(f'symbol: {symbol}')
+    #
+    # print(f'''
+    #     test1
+    #     test2
+    # ''')
 
-    print(f'''
-        test1
-        test2
-    ''')
+    a = upbit.get_avg_buy_price('KRW-BTC')
+    print (a)
+
+    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes3', count=4)
+    close = candle['close']
+    print(type(close[0]))
+    print(int(close[0]))

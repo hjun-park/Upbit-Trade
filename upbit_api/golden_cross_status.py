@@ -26,10 +26,10 @@ coin_list = [
 
 file_path = "./coin_info.json"
 #
-# coin_info = {}
-#
-# for i in coin_list:
-#     coin_info[i] = 0
+coin_info = {}
+
+for i in coin_list:
+    coin_info[i] = 0
 
 # coin_info['coin'] = []
 #
@@ -39,12 +39,12 @@ file_path = "./coin_info.json"
 #         "is_golden": 0
 #     })
 #
-# with open(file_path, 'w') as outfile:
-#     json.dump(coin_info, outfile, indent=4)
+with open(file_path, 'w') as outfile:
+    json.dump(coin_info, outfile, indent=4)
 
 # 특정 정보 읽어오기
-with open(file_path, "r") as json_file:
-    json_data = json.load(json_file)
+# with open(file_path, "r") as json_file:
+#     json_data = json.load(json_file)
 
 # print(json_data['KRW-DOGE'])
 #
@@ -54,7 +54,7 @@ with open(file_path, "r") as json_file:
 # with open(file_path, 'w') as outfile:
 #     json.dump(json_data, outfile, indent=4)
 
-print (json_data['KRW-DOGE'])
+# print (json_data['KRW-DOGE'])
 
 # for name, value in json_data.items():
 #     print(name, value)

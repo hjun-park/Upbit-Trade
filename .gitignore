@@ -2,3 +2,5 @@
 .ipynb_checkpoints
 upbit.txt
 api.py
+upbit_api/__pycache__/*
+__pycache__/*

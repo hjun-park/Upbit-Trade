@@ -1,13 +1,20 @@
 import datetime
 import os
 import time
-
+import signal
 from upbit_api.api import *
 import asyncio
 import traceback
 from multiprocessing import Queue, Process, Pool, current_process
 
-file_path = "./coin_info.json"
+file_path = "./upbit_api/coin_info.json"
+coin_json = 0
+
+
+def handler(signum, frame):
+    print('TERMINATE')
+    with open(file_path, 'w') as outfile:
+        json.dump(coin_json, outfile, indent=4)
 
 
 # 매도 후 메일 전송
@@ -55,35 +62,49 @@ async def golden_cross(symbol, info):
 
 # 3번 연속 하락을 감지하거나 현재가보다 떨어질 경우 판매
 async def check_low_candle(symbol, before_price):
-    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes3', count=4)
+    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes10', count=4)
     close = candle['close']
 
     print(f"\t\t=============================")
     print(f"\t\t======== Candle Info ========")
     print(f"\t\t=============================")
-    print(f"\t\t1-1) close[0]: f{close[0]}")
-    print(f"\t\t1-2) close[1]: f{close[1]}")
-    print(f"\t\t1-3) close[2]: f{close[2]}\n")
+    print(f"\t\t1-1) close[0]: {close[0]}")
+    print(f"\t\t1-2) close[1]: {close[1]}")
+    print(f"\t\t1-3) close[2]: {close[2]}\n")
     print(f"\t\t2-1) 이전가(-4%): {before_price * 0.96}")
     print(f"\t\t3-1) 현재 잔고 평균가({symbol}): {upbit.get_avg_buy_price(symbol)}")
 
+    content = f'''
+    ===================
+    === Candle Info ===
+    ===================
+    1-1) close[0]: {close[0]}
+    1-2) close[1]: {close[1]}
+    1-3) close[2]: {close[2]}
+    2-1) 이전가(-4%): {before_price * 0.96}
+    3-1) 현재 잔고 평균가({symbol}): {upbit.get_avg_buy_price(symbol)}
+    '''
+
     # 3번 연속 하락 시 판매
-    if close[0] > close[1] > close[2]:
-        await send_mail("3연속 하락에 의한 매도", f"..{symbol}...")
+    if int(close[0]) > int(close[1]) > int(close[2]):
+        print("3연속 하락에 의한 매도")
+        await send_mail(f"{symbol}3연속 하락에 의한 매도", f"..{content}...")
         await dead_cross(symbol)
 
         return 0
 
     # 이전값에서 4%보다 같거나 더 빠진 경우
     if pyupbit.get_current_price(symbol) <= (before_price * 0.96):
-        await send_mail("4% 하락에 의한 판매", f"..{symbol}...")
+        print("4% 하락에 의한 판매")
+        await send_mail(f"{symbol}4% 하락에 의한 판매", f"..{content}...")
         await dead_cross(symbol)
 
         return 0
 
     # 매수가가 현재가보다 더 큰 경우
     if pyupbit.get_current_price(symbol) < upbit.get_avg_buy_price(symbol):
-        await send_mail("현재값보다 떨어져 판매", f"..{symbol}...")
+        print("현재값보다 떨어져 판매")
+        await send_mail(f"{symbol} 현재값보다 떨어져 판매", f"..{content} :{upbit.get_avg_buy_price(symbol)}...")
         await dead_cross(symbol)
 
         return 0
@@ -100,16 +121,15 @@ async def checking_moving_average(symbol):
             - test1 : 같거나 양수
             - test2 : 음수
     """
-
-    before_price = 0
+    global coin_json
+    before_price = pyupbit.get_current_price(symbol)
     now_price = 0
-
-    # TODO: 골든크로스 정보 요청
     coin_json = load_golden_cross_info(file_path)
 
-
+    print(coin_json)
     try:
         while True:
+            index = 0
             # ==========================================
             # CHECK ACCESS KEY
             # ==========================================
@@ -122,7 +142,7 @@ async def checking_moving_average(symbol):
 
             # 가끔 값을 받아오지 못하는 경우는 다시
             try:
-                candle_min = pyupbit.get_ohlcv(symbol, interval="minute3")
+                candle_min = pyupbit.get_ohlcv(symbol, interval="minute10")
                 close = candle_min['close']
             except TypeError:
                 await send_mail('some errer in load candle', '...')
@@ -143,33 +163,40 @@ async def checking_moving_average(symbol):
 
             info = f'''
                 ###########################################
-                ============ {symbol} =============
+                ============ {index}: {symbol} =============
                 ============ {datetime.datetime.now()} ============
                 ============ 현재/이전가 계산 =============
                 1) 현재가 : {now_price}
                 2) 이전가 : {before_price}
                 3) 음봉/양봉 : {is_state}
                 
-                ========= 20/60일 이동평균선 계산 =========
+                ======= 이평선 계산 =======
                 1) 20일 이평선 : {round(ma20, 2)}
                 2) 60일 이평선 : {round(ma60, 2)}
                 
-                ============= 크로스 테스트 =============
+                ======= 크로스 테스트 =======
                 1) ma_test1 : {round(ma_test1, 2)}
                 2) ma_test2 : {round(ma_test2, 2)}
                 
+                골든크로스
+                    - test1 : 음수
+                    - test2 : 같거나 양수    
+                데드크로스
+                    - test1 : 같거나 양수
+                    - test2 : 음수
                 ###########################################
                 
                 
                 
             '''
+            index += 1
 
             # ==========================================
             # 골든크로스 상태에서의 체크 루프
             # ==========================================
             if coin_json[symbol]:
                 print(f' ##### {symbol} in golden_cross')
-                coin_json[symbol] = check_low_candle(symbol, before_price)
+                coin_json[symbol] = await check_low_candle(symbol, before_price)
 
             if is_state > 0 and (ma_test1 < 0 and ma_test2 >= 0):
                 await send_mail(f"KEEP CHECKING : {symbol}", "...")
@@ -188,8 +215,8 @@ async def checking_moving_average(symbol):
             before_price = now_price
 
             # time.sleep(60 * 30)
-            print(f'########## ${symbol} SCAN DONE ############\n\n\n')
-            await asyncio.sleep(60 * 3)
+            print(f'########## {symbol} SCAN DONE ############\n\n\n')
+            await asyncio.sleep(60 * 10)
 
     except Exception as e:
         print(traceback.format_exc())
@@ -197,7 +224,7 @@ async def checking_moving_average(symbol):
         await asyncio.sleep(2)
 
 
-async def check_loop(proc_name):
+async def check_loop():
     """
         # 매수 시기
         양봉 > 20이평선 > 60이평선 더 클 때 (전과 지금 값보다 비교해서 많은 경우 )
@@ -236,7 +263,7 @@ def sell_proc():
     try:
         while True:
             #  1. 주기적으로 잔고확인하여 잔고가 -5% 수익이면 전량 매도
-            time.sleep(60 * 3)
+            time.sleep(60 * 10)
 
             balance = upbit.get_balances()  # 매수 총 내역
             size = len(balance)
@@ -261,6 +288,9 @@ def buy_proc():
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGINT, handler)
+    # signal.signal(signal.SIGKILL, handler)
     # ==========================================
     # GET Upbit Account Info
     # ==========================================
@@ -287,10 +317,9 @@ if __name__ == '__main__':
     # ==========================================
     # make Thread
     # ==========================================
-
     sell_proc = Process(target=sell_proc, name="sell_proc")
     buy_proc = Process(target=buy_proc, name="buy_proc")
-    main_proc = Process(target=asyncio.run(check_loop('proc main')), name="main_proc")
+    main_proc = Process(target=asyncio.run(check_loop()), name="main_proc")
 
     proc_list = [sell_proc, buy_proc, main_proc]
 
@@ -300,8 +329,3 @@ if __name__ == '__main__':
         proc.start()
     for proc in proc_list:
         proc.join()
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ is run (2) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ is run (2) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ is run (2) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-
-    # asyncio.run(check_loop('proc main'))
