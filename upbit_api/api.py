@@ -47,6 +47,16 @@ coin_list = [
 
 
 # ===========================================
+# rsi
+# ===========================================
+
+# ===========================================
+# 정시가 되면 동작하도록 wait
+# ===========================================
+# def wait_for_on_time():
+
+
+# ===========================================
 # JSON 파일 백업
 # ===========================================
 def write_json(file_path, coin_json):
@@ -63,6 +73,7 @@ def load_golden_cross_info(file_path):
 
     # for name, value in json_data.items():
     #     print(name, value)
+
 
 
 def check_key_expire(upbit):
