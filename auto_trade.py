@@ -66,7 +66,7 @@ async def golden_cross(symbol, info):
 
 # 3번 연속 하락을 감지하거나 현재가보다 떨어질 경우 판매
 async def check_low_candle(symbol, before_price):
-    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes5', count=4)
+    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes1', count=4)
     close = candle['close']
 
     print(f"\t\t=============================")
@@ -93,7 +93,7 @@ async def check_low_candle(symbol, before_price):
     if int(close[0]) > int(close[1]) > int(close[2]):
         print("3연속 하락에 의한 매도")
         await send_mail(f"{symbol}3연속 하락에 의한 매도", f"..{content}...")
-        await dead_cross(symbol)
+        # await dead_cross(symbol)
 
         return 0
 
@@ -101,7 +101,7 @@ async def check_low_candle(symbol, before_price):
     if pyupbit.get_current_price(symbol) <= (before_price * 0.96):
         print("4% 하락에 의한 판매")
         await send_mail(f"{symbol}4% 하락에 의한 판매", f"..{content}...")
-        await dead_cross(symbol)
+        # await dead_cross(symbol)
 
         return 0
 
@@ -148,7 +148,7 @@ async def checking_moving_average(symbol):
 
             # 가끔 값을 받아오지 못하는 경우는 다시
             try:
-                candle_min = pyupbit.get_ohlcv(symbol, interval="minute5")
+                candle_min = pyupbit.get_ohlcv(symbol, interval="minute1")
                 close = candle_min['close']
             except TypeError:
                 await send_mail('some errer in load candle', '...')
@@ -253,7 +253,7 @@ async def checking_moving_average(symbol):
 
             # time.sleep(60 * 30)
             print(f'########## {symbol} SCAN DONE ############\n\n\n')
-            await asyncio.sleep(60 * 60)
+            await asyncio.sleep(60 * 1)
 
     except Exception as e:
         print(traceback.format_exc())
@@ -295,17 +295,17 @@ async def check_loop():
 def sell_proc():
     try:
         while RUN:
-            #  1. 주기적으로 잔고확인하여 잔고가 -3% 수익이면 전량 매도
-            time.sleep(60 * 10)
+            #  1. 주기적으로 잔고확인하여 잔고가 -2% 수익이면 전량 매도
+            time.sleep(60 * 1)
 
             balance = upbit.get_balances()  # 매수 총 내역
             size = len(balance)
             for i in range(1, size):
                 buy_avg_price = int(balance[i]['avg_buy_price'])
-                minus_4p = round(buy_avg_price * 0.96)
+                minus_2p = round(buy_avg_price * 0.98)
 
                 # -5% 이하라면 판매
-                if buy_avg_price < minus_4p:
+                if buy_avg_price < minus_2p:
                     symbol = f"KRW-{balance[i]['currency']}"
                     info = f"-5% 이하 이유로 판매, {pyupbit.get_current_price(symbol)} : {buy_avg_price}"
                     dead_cross(symbol, info)
