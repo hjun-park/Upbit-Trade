@@ -5,7 +5,9 @@ import signal
 from upbit_api.api import *
 import asyncio
 import traceback
-from multiprocessing import Queue, Process, Pool, current_process
+from multiprocessing import Queue, Process, current_process
+
+uuid_queue = Queue()
 
 file_path = "./upbit_api/coin_info.json"
 coin_json = 0
@@ -36,7 +38,10 @@ async def dead_cross(symbol, info):
 
     # 현재가보다 살짝 낮게 판매
     sell_price = pyupbit.get_current_price(symbol) - unit_size
-    print(upbit.sell_limit_order(ticker=symbol, price=sell_price, volume=sell_volume))
+    print(f'sell price {sell_price}')
+    print(f'sell volume {symbol} - {sell_volume}')
+    order = ([upbit.sell_limit_order(ticker=symbol, price=sell_price, volume=sell_volume), symbol])
+    uuid_queue.put(order)
 
     # ==========================================
     # Send Email
@@ -53,7 +58,7 @@ async def golden_cross(symbol, info):
     # Buy
     # ==========================================
     # 시장가로 매수
-    buy_price = 50000
+    buy_price = 150000
     upbit.buy_market_order(ticker=symbol, price=buy_price)
 
     # ==========================================
@@ -66,7 +71,7 @@ async def golden_cross(symbol, info):
 
 # 3번 연속 하락을 감지하거나 현재가보다 떨어질 경우 판매
 async def check_low_candle(symbol, before_price):
-    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minutes1', count=4)
+    candle = pyupbit.get_ohlcv(ticker=symbol, interval='minute30', count=4)
     close = candle['close']
 
     print(f"\t\t=============================")
@@ -126,7 +131,6 @@ async def checking_moving_average(symbol):
             - test2 : 음수
     """
 
-
     global coin_json
     before_price = pyupbit.get_current_price(symbol)
     now_price = 0
@@ -135,6 +139,8 @@ async def checking_moving_average(symbol):
     print(coin_json)
     try:
         while RUN:
+            if symbol == "KRW-DOGE":
+                await send_mail('confirm 30minutes', str(upbit.get_balance()))
             index = 0
             # ==========================================
             # CHECK ACCESS KEY
@@ -148,7 +154,7 @@ async def checking_moving_average(symbol):
 
             # 가끔 값을 받아오지 못하는 경우는 다시
             try:
-                candle_min = pyupbit.get_ohlcv(symbol, interval="minute1")
+                candle_min = pyupbit.get_ohlcv(symbol, interval="minute30")
                 close = candle_min['close']
             except TypeError:
                 await send_mail('some errer in load candle', '...')
@@ -156,11 +162,11 @@ async def checking_moving_average(symbol):
                 continue
 
             bf_ma01 = close.rolling(1).mean().iloc[-2]
-            bf_ma05 = close.rolling(5).mean().iloc[-2]
+            bf_ma05 = close.rolling(7).mean().iloc[-2]
             bf_ma20 = close.rolling(20).mean().iloc[-2]
             bf_ma60 = close.rolling(60).mean().iloc[-2]
             ma01 = close.rolling(1).mean().iloc[-1]
-            ma05 = close.rolling(5).mean().iloc[-1]
+            ma05 = close.rolling(7).mean().iloc[-1]
             ma20 = close.rolling(20).mean().iloc[-1]
             ma60 = close.rolling(60).mean().iloc[-1]
 
@@ -253,7 +259,7 @@ async def checking_moving_average(symbol):
 
             # time.sleep(60 * 30)
             print(f'########## {symbol} SCAN DONE ############\n\n\n')
-            await asyncio.sleep(60 * 1)
+            await asyncio.sleep(60 * 30)
 
     except Exception as e:
         print(traceback.format_exc())
@@ -292,23 +298,47 @@ async def check_loop():
 #         time.sleep(2)
 #         print("exiting process")
 
-def sell_proc():
+def sell_logic():
     try:
         while RUN:
+            print('sell_logic')
             #  1. 주기적으로 잔고확인하여 잔고가 -2% 수익이면 전량 매도
-            time.sleep(60 * 1)
+            time.sleep(60 * 4)
+            print("################## CHECKING ACCOUNT ##############")
 
             balance = upbit.get_balances()  # 매수 총 내역
             size = len(balance)
             for i in range(1, size):
                 buy_avg_price = int(balance[i]['avg_buy_price'])
+                symbol = f"KRW-{balance[i]['currency']}"
                 minus_2p = round(buy_avg_price * 0.98)
 
-                # -5% 이하라면 판매
+                # locked값이 있는 경우 재매도 ( 주문취소가 안 된 부분임 )
+                if int(balance[i]['locked']) > 0:
+                    # 주문 취소 후 재 매도
+                    while not uuid_queue.empty():
+                        order_list = uuid_queue.get()
+                        sell_info = order_list[0]
+                        cancel_symbol = order_list[1]
+
+                        if cancel_symbol == symbol:
+                            uuid = sell_info['uuid']
+                            upbit.cancel_order(uuid)
+
+                            dead_cross(symbol, f"{symbol} 팔리지 않아 주문취소 후 재매도")
+                            coin_json[symbol] = 0
+                            write_json(file_path, coin_json)
+
+                            break
+
+                # -2% 이하라면 판매
                 if buy_avg_price < minus_2p:
-                    symbol = f"KRW-{balance[i]['currency']}"
-                    info = f"-5% 이하 이유로 판매, {pyupbit.get_current_price(symbol)} : {buy_avg_price}"
+                    info = f"-2% 이하 이유로 판매, {pyupbit.get_current_price(symbol)} : {buy_avg_price}"
                     dead_cross(symbol, info)
+                    coin_json[symbol] = 0
+                    write_json(file_path, coin_json)
+
+                # 잔고에 locked로 존재한다면
 
     except Exception as e:
         print(traceback.format_exc())
@@ -317,10 +347,13 @@ def sell_proc():
 
 
 def json_backup():
-    # 4분에 1번 json 백업
+    # 30분에 1번 json 백업 & alive 알림
     while RUN:
+        print('IS ALIVE')
+        info = load_golden_cross_info(file_path)
+        # write_json(file_path, coin_json)
+        # await send_mail("IS ALIVE", info)
         time.sleep(60 * 4)
-        write_json(file_path, coin_json)
 
     #  2. +2% 수익이 나면 추가 매수 ( 이건 신중해서 해볼 것 )
     # 1)
@@ -368,16 +401,19 @@ if __name__ == '__main__':
     # ==========================================
     # make Thread
     # ==========================================
-    sell_proc = Process(target=sell_proc, name="sell_proc")
-    # buy_proc = Process(target=buy_proc, name="buy_proc")
+    sell_proc = Process(target=sell_logic, name="sell_logic")
+    buy_proc = Process(target=json_backup, name="buy_proc")
     main_proc = Process(target=asyncio.run(check_loop()), name="main_proc")
 
-    # proc_list = [sell_proc, buy_proc, main_proc]
-    proc_list = [sell_proc, main_proc]
+    proc_list = [sell_proc, buy_proc, main_proc]
+    # proc_list = [sell_proc, buy_proc]
 
     for proc in proc_list:
         proc.daemon = True
     for proc in proc_list:
+        print(proc)
         proc.start()
+    # buy_proc.start()
+    # sell_proc.start()
     for proc in proc_list:
         proc.join()

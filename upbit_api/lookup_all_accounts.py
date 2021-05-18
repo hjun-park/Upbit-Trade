@@ -44,4 +44,6 @@ asset = json_obj[0]
 # print(upbit.buy_limit_order(ticker="KRW-DOGE", price=580, volume=1))
 # print(upbit.get_order(ticker_or_uuid='KRW-DOGE', state='done'))
 
-print(upbit.get_avg_buy_price('XRP'))
+print(upbit.get_balances())
+# print(upbit.sell_limit_order('KRW-DOT', ))
+# print(upbit.cancel_order())

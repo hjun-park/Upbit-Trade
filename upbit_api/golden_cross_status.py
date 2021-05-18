@@ -1,4 +1,3 @@
-import pickle
 import json
 
 coin_list = [
