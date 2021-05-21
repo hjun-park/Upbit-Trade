@@ -21,7 +21,7 @@ def sendToMeMessage(text):
 
 text = "Hello, This is KaKao Message Test!!("+os.path.basename(__file__).replace(".py", ")")
 
-KAKAO_TOKEN = "rsGYY_dN9DWuRMngjqx_lf6aN64RJi9A-BWyMQopyWAAAAF5dEUKpg"
+KAKAO_TOKEN = "[kakao_token]"
 
 print(sendToMeMessage(text).text)
 
