@@ -141,12 +141,12 @@ async def send_mail(title, content):
     smtp = smtplib.SMTP('smtp.gmail.com', 587)
     smtp.ehlo()  # say Hello
     smtp.starttls()  # TLS 사용시 필요
-    smtp.login('phj0860@gmail.com', 'shnjmugpuizaudjb')
+    smtp.login('[송신자메일]', '[smtp 패스워드]')
 
     msg = MIMEText(content)
     msg['Subject'] = title
-    msg['To'] = 'tkdldjs35@naver.com'
-    smtp.sendmail('phj0860@gmail.com', 'tkdldjs35@naver.com', msg.as_string())
+    msg['To'] = '[수신자메일]'
+    smtp.sendmail('[전송자메일]', '[수신자메일]', msg.as_string())
 
     smtp.quit()
 
