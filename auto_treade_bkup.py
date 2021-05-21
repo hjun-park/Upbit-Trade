@@ -197,8 +197,8 @@ if __name__ == '__main__':
     # ==========================================
     # GET Upbit Account Info
     # ==========================================
-    os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = '46PB8FwZLoe2IjKxU0OnJToTtOtjOMxIx5l3dh2h'
-    os.environ['UPBIT_OPEN_API_SECRET_KEY'] = 'B1oYGuJi7Y4TowhFnTsnv5LSKpuMSyNxKEej8ojk'
+    os.environ['UPBIT_OPEN_API_ACCESS_KEY'] = '[접근키]'
+    os.environ['UPBIT_OPEN_API_SECRET_KEY'] = '[비밀키]'
     os.environ['UPBIT_OPEN_API_SERVER_URL'] = "https://api.upbit.com"
 
     access_key = os.environ['UPBIT_OPEN_API_ACCESS_KEY']
